@@ -12,15 +12,23 @@ const server = http.createServer(app);
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: "*", // Railway testing ke liye
   credentials: true
-}));
+}))
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Database
 connectDB();
+
+// Add this before routes
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString() 
+  });
+});
 
 // Routes
 app.get('/', (req, res) => {
@@ -34,7 +42,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 // Socket.io
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: "*", // Ya array use karein
     methods: ["GET", "POST"],
     credentials: true
   }
