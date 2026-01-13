@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -11,49 +10,46 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Socket.io setup
-const io = socketIo(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    credentials: true,
-    methods: ["GET", "POST"]
-  }
-});
-
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Database connection
+// Database
 connectDB();
 
-// Root route
+// Routes
 app.get('/', (req, res) => {
   res.json({ message: 'Chat App API is running' });
 });
 
-// Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 
-// Socket.io connection
+// Socket.io
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL,
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
 const users = {};
 
 io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
+  console.log('Client connected:', socket.id);
 
-  // Add user to online users
   socket.on('add-user', (userId) => {
     users[userId] = socket.id;
     io.emit('online-users', Object.keys(users));
   });
 
-  // Send message
   socket.on('send-message', (data) => {
     const receiverSocketId = users[data.receiverId];
     if (receiverSocketId) {
@@ -61,7 +57,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Typing indicator
   socket.on('typing', (data) => {
     const receiverSocketId = users[data.receiverId];
     if (receiverSocketId) {
@@ -69,7 +64,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // User disconnected
   socket.on('disconnect', () => {
     for (let userId in users) {
       if (users[userId] === socket.id) {
@@ -78,15 +72,11 @@ io.on('connection', (socket) => {
       }
     }
     io.emit('online-users', Object.keys(users));
-    console.log('Client disconnected');
   });
 });
 
-
-
-if (process.env.NODE_ENV !== "production") {
- const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}
-
-module.exports = app;
+// ✅ IMPORTANT (Render requires this)
+const PORT = process.env.PORT || 5001;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
